@@ -19,27 +19,35 @@ def inicializar():
         else:
             print(f'{arquivo} já existe.')
 
-def salvar_dados(df, nome_arquivo):
-    df.to_excel(nome_arquivo, index=False)
-
 def carregar_dados(nome_arquivo, nome_arquivo_bkp=None):
     if os.path.exists(nome_arquivo):
         return pd.read_excel(nome_arquivo)
     elif nome_arquivo_bkp and os.path.exists(nome_arquivo_bkp):
-        print(f"Carregando dados do backup: {nome_arquivo_bkp}")
+        print(f"Conectando ao BD Redundante: {nome_arquivo_bkp}")
         return pd.read_excel(nome_arquivo_bkp)
     else:
         return pd.DataFrame()
-    
-def sincronizar_dados(df_bkp, nome_arquivo_principal):
-    if os.path.exists(nome_arquivo_principal):
-        df_principal = pd.read_excel(nome_arquivo_principal)
-        df_sincronizado = pd.concat([df_principal, df_bkp]).drop_duplicates().reset_index(drop=True)
-        salvar_dados(df_sincronizado, nome_arquivo_principal)
-        print(f"Dados sincronizados com sucesso para {nome_arquivo_principal}!")
+
+def sincronizar(principal,redundancia):    
+    if os.path.exists(principal):
+        df_principal = pd.read_excel(principal)
+        df_redundancia = pd.read_excel(redundancia)
+        df_completo = pd.concat([df_principal, df_redundancia]).drop_duplicates().reset_index(drop=True)
+        salvar_dados(df_completo, principal)
+        
+        print(f"Sincronização realizada com sucesso para {principal}.")
     else:
-        print(f"O arquivo principal {nome_arquivo_principal} ainda não está disponível.")
+        print(f"O BD principal {principal} não existe. Não foi possível sincronizar.")
+
+def salvar_dados(df, nome_arquivo_principal, nome_arquivo_secundario=None):
+    if os.path.exists(nome_arquivo_principal):
+        df.to_excel(nome_arquivo_principal, index=False)
+        print(f"Dados salvos em {nome_arquivo_principal}")
     
+    if nome_arquivo_secundario and os.path.exists(nome_arquivo_secundario):
+        df.to_excel(nome_arquivo_secundario, index=False)
+        print(f"Dados salvos em {nome_arquivo_secundario}")
+
 def menu():
     while True:
         print("\nMenu Principal")
@@ -64,7 +72,8 @@ def menu():
             print("Opção inválida!")
 
 def menu_usuario():
-    df_usuarios,origem_usuarios  = carregar_dados('usuarios.xlsx', 'usuarios_backup.xlsx')
+    sincronizar('usuarios.xlsx','usuarios_backup.xlsx')
+    df_usuarios = carregar_dados('usuarios.xlsx', 'usuarios_backup.xlsx')
     while True:
         print("\nMenu Usuário")
         print("(1) Adicionar Usuário")
@@ -78,10 +87,7 @@ def menu_usuario():
             email = input("Email: ")
             novo_usuario = pd.DataFrame([{'Nome': nome, 'Email': email}])
             df_usuarios = pd.concat([df_usuarios, novo_usuario], ignore_index=True)
-            salvar_dados(df_usuarios, 'usuarios.xlsx')
-            if origem_usuarios == 'usuarios_backup.xlsx':
-                sincronizar_dados(df_usuarios, 'usuarios.xlsx')
-            salvar_dados(df_usuarios, 'usuarios_backup.xlsx')
+            salvar_dados(df_usuarios, 'usuarios.xlsx','usuarios_backup.xlsx')
             print("Usuário adicionado com sucesso!")
         elif escolha == '2':
             email = input("Email do usuário a ser atualizado: ")
@@ -102,7 +108,8 @@ def menu_usuario():
             print("Opção inválida!")
 
 def menu_produtos():
-    df_produtos, origem_produtos = carregar_dados('produtos.xlsx', 'produtos_backup.xlsx')
+    sincronizar('produtos.xlsx','produtos_backup.xlsx')
+    df_produtos = carregar_dados('produtos.xlsx', 'produtos_backup.xlsx')
     while True:
         print("\nMenu Produtos")
         print("(1) Adicionar Produto")
@@ -116,10 +123,7 @@ def menu_produtos():
             preco = float(input("Preço: "))
             novo_produto = pd.DataFrame([{'Nome': nome, 'Preço': preco}])
             df_produtos = pd.concat([df_produtos, novo_produto], ignore_index=True)
-            salvar_dados(df_produtos, 'produtos.xlsx')
-            if origem_produtos == 'produtos_backup.xlsx':
-                sincronizar_dados(df_produtos, 'produtos.xlsx')
-            salvar_dados(df_produtos, 'produtos_backup.xlsx')
+            salvar_dados(df_produtos, 'produtos.xlsx','produtos_backup.xlsx')
             print("Produto adicionado com sucesso!")
         elif escolha == '2':
             nome = input("Nome do produto a ser atualizado: ")
